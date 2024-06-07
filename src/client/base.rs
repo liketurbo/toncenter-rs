@@ -1,9 +1,10 @@
 use crate::{
-    error::ApiClientError,
+    error::ApiError,
     models::{ApiResponse, ApiResponseResult},
 };
-use reqwest::{header::HeaderMap, Client, StatusCode};
-use serde::Deserialize;
+use log::debug;
+use reqwest::{header::HeaderMap, Client};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum Network {
@@ -31,12 +32,12 @@ impl BaseApiClient {
         }
     }
 
-    pub async fn get<T: for<'de> Deserialize<'de>>(
+    pub async fn get<T: for<'de> Deserialize<'de> + std::fmt::Debug>(
         &self,
         base_url: &str,
         endpoint: &str,
         params: &[(&str, &str)],
-    ) -> Result<T, ApiClientError> {
+    ) -> Result<T, ApiError> {
         let mut headers = HeaderMap::new();
         let mut query_params = params.to_vec();
 
@@ -54,60 +55,134 @@ impl BaseApiClient {
         let url = format!("{}{}", base_url, endpoint);
         let url_with_params = reqwest::Url::parse_with_params(&url, query_params)?;
         let request = self.client.get(url_with_params).headers(headers);
+        debug!("Request after processing: {:?}", request);
 
         let response = request.send().await?;
+        debug!("Received response: {:?}", response);
 
-        match response.status() {
-            StatusCode::OK => {
-                let response_body = response.json::<ApiResponse<T>>().await.map_err(|e| {
-                    if e.is_decode() {
-                        ApiClientError::JsonStructureError(format!(
-                            "Failed to decode JSON structure: {}",
-                            e
-                        ))
-                    } else {
-                        ApiClientError::NetworkError(e)
-                    }
-                })?;
+        let response_text = response.text().await?;
+        debug!("Response text: {}", response_text);
 
-                if response_body.ok {
-                    if let ApiResponseResult::Success { result } = response_body.data {
-                        Ok(result)
-                    } else {
-                        Err(ApiClientError::UnexpectedResponse)
-                    }
+        let response_body: ApiResponse<T> = serde_json::from_str(&response_text)?;
+        debug!("Response body: {:?}", response_body);
+
+        if response_body.ok {
+            if let ApiResponseResult::Success { result } = response_body.data {
+                return Ok(result);
+            }
+
+            return Err(ApiError::ServerError {
+                code: 500,
+                message: "Invalid response from server, expected 'result'".to_string(),
+            });
+        } else {
+            if let ApiResponseResult::Error {
+                result,
+                error,
+                code,
+            } = response_body.data
+            {
+                let error_message = error
+                    .or(result)
+                    .unwrap_or_else(|| "Unknown error".to_string());
+                if code == 429 {
+                    return Err(ApiError::RateLimitExceeded);
+                } else if (400..500).contains(&code) {
+                    return Err(ApiError::ClientError {
+                        code,
+                        message: error_message,
+                    });
                 } else {
-                    if let ApiResponseResult::Error { error, code } = response_body.data {
-                        Err(ApiClientError::ApiError(format!(
-                            "Error {}: {}",
-                            code, error
-                        )))
-                    } else {
-                        Err(ApiClientError::UnexpectedResponse)
-                    }
+                    return Err(ApiError::ServerError {
+                        code,
+                        message: error_message,
+                    });
                 }
             }
-            StatusCode::UNPROCESSABLE_ENTITY => {
-                let error_text = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Unprocessable Entity".to_string());
-                Err(ApiClientError::ValidationError(error_text))
+
+            return Err(ApiError::ServerError {
+                code: 500,
+                message: "Invalid response from server, expected 'result' or 'error'".to_string(),
+            });
+        }
+    }
+
+    pub async fn post<T: for<'de> Deserialize<'de> + std::fmt::Debug, B: Serialize>(
+        &self,
+        base_url: &str,
+        endpoint: &str,
+        body: &B,
+    ) -> Result<T, ApiError> {
+        let mut headers = HeaderMap::new();
+        let mut query_params = vec![];
+
+        if let Some(ref key) = self.api_key {
+            match key {
+                ApiKey::Header(key) => {
+                    headers.insert("x-api-key", key.parse()?);
+                }
+                ApiKey::Query(key) => {
+                    query_params.push(("api_key", key));
+                }
+            };
+        }
+
+        let url = format!("{}{}", base_url, endpoint);
+        let url_with_params = reqwest::Url::parse_with_params(&url, query_params)?;
+        let request = self
+            .client
+            .post(url_with_params)
+            .headers(headers)
+            .json(body);
+        debug!("Request after processing: {:?}", request);
+
+        let response = request.send().await?;
+        debug!("Received response: {:?}", response);
+
+        let response_text = response.text().await?;
+        debug!("Response text: {}", response_text);
+
+        let response_body: ApiResponse<T> = serde_json::from_str(&response_text)?;
+        debug!("Response body: {:?}", response_body);
+
+        if response_body.ok {
+            if let ApiResponseResult::Success { result } = response_body.data {
+                return Ok(result);
             }
-            StatusCode::GATEWAY_TIMEOUT => {
-                let error_text = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Gateway Timeout".to_string());
-                Err(ApiClientError::LiteServerTimeout(error_text))
+
+            return Err(ApiError::ServerError {
+                code: 500,
+                message: "Invalid response from server, expected 'result'".to_string(),
+            });
+        } else {
+            if let ApiResponseResult::Error {
+                result,
+                error,
+                code,
+            } = response_body.data
+            {
+                let error_message = error
+                    .or(result)
+                    .unwrap_or_else(|| "Unknown error".to_string());
+                if code == 429 {
+                    return Err(ApiError::RateLimitExceeded);
+                } else if (400..500).contains(&code) {
+                    return Err(ApiError::ClientError {
+                        code,
+                        message: error_message,
+                    });
+                } else {
+                    return Err(ApiError::ServerError {
+                        code,
+                        message: error_message,
+                    });
+                }
             }
-            _ => {
-                let error_text = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Unknown error".to_string());
-                Err(ApiClientError::ApiError(error_text))
-            }
+
+            return Err(ApiError::ServerError {
+                code: 500,
+                message: "Invalid response from server, expected 'result' or 'error'".to_string(),
+            });
         }
     }
 }

@@ -6,58 +6,84 @@ use std::fmt;
 use url::ParseError as UrlParseError;
 
 #[derive(Debug)]
-pub enum ApiClientError {
-    NetworkError(ReqwestError),
-    DeserializationError(SerdeError),
-    ApiError(String),
-    UrlParseError(UrlParseError),
-    InvalidHeaderValue(InvalidHeaderValue),
-    UnexpectedResponse,
-    ValidationError(String),
-    LiteServerTimeout(String),
-    JsonStructureError(String),
+pub enum ApiError {
+    InvalidUserInput(InvalidUserInputError),
+    ProcessingError(ProcessingError),
+    RateLimitExceeded,
+    ClientError { code: u32, message: String },
+    ServerError { code: u32, message: String },
 }
 
-impl fmt::Display for ApiClientError {
+#[derive(Debug)]
+pub enum InvalidUserInputError {
+    InvalidHeaderValue(InvalidHeaderValue),
+    UrlParseError(UrlParseError),
+}
+
+#[derive(Debug)]
+pub enum ProcessingError {
+    Network(ReqwestError),
+    Deserialization(SerdeError),
+}
+
+impl fmt::Display for ApiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ApiClientError::NetworkError(err) => write!(f, "Network error: {}", err),
-            ApiClientError::DeserializationError(err) => {
-                write!(f, "Deserialization error: {}", err)
+            ApiError::InvalidUserInput(err) => write!(f, "Invalid user input: {}", err),
+            ApiError::ProcessingError(err) => write!(f, "Processing error: {}", err),
+            ApiError::RateLimitExceeded => write!(f, "Rate limit exceeded"),
+            ApiError::ClientError { code, message } => {
+                write!(f, "Client error {}: {}", code, message)
             }
-            ApiClientError::ApiError(err) => write!(f, "API error: {}", err),
-            ApiClientError::UrlParseError(err) => write!(f, "URL parse error: {}", err),
-            ApiClientError::InvalidHeaderValue(err) => write!(f, "Invalid header value: {}", err),
-            ApiClientError::UnexpectedResponse => write!(f, "Unexpected response structure"),
-            ApiClientError::ValidationError(err) => write!(f, "Validation error: {}", err),
-            ApiClientError::LiteServerTimeout(err) => write!(f, "Lite Server Timeout: {}", err),
-            ApiClientError::JsonStructureError(err) => write!(f, "JSON structure error: {}", err),
+            ApiError::ServerError { code, message } => {
+                write!(f, "Server error {}: {}", code, message)
+            }
         }
     }
 }
 
-impl Error for ApiClientError {}
-
-impl From<ReqwestError> for ApiClientError {
-    fn from(err: ReqwestError) -> ApiClientError {
-        ApiClientError::NetworkError(err)
+impl fmt::Display for InvalidUserInputError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            InvalidUserInputError::InvalidHeaderValue(err) => {
+                write!(f, "Invalid header value: {}", err)
+            }
+            InvalidUserInputError::UrlParseError(err) => write!(f, "URL parse error: {}", err),
+        }
     }
 }
 
-impl From<SerdeError> for ApiClientError {
-    fn from(err: SerdeError) -> ApiClientError {
-        ApiClientError::DeserializationError(err)
+impl fmt::Display for ProcessingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProcessingError::Network(err) => write!(f, "Network error: {}", err),
+            ProcessingError::Deserialization(err) => write!(f, "Deserialization error: {}", err),
+        }
     }
 }
 
-impl From<UrlParseError> for ApiClientError {
-    fn from(err: UrlParseError) -> ApiClientError {
-        ApiClientError::UrlParseError(err)
+impl Error for ApiError {}
+
+impl From<InvalidHeaderValue> for ApiError {
+    fn from(err: InvalidHeaderValue) -> ApiError {
+        ApiError::InvalidUserInput(InvalidUserInputError::InvalidHeaderValue(err))
     }
 }
 
-impl From<InvalidHeaderValue> for ApiClientError {
-    fn from(err: InvalidHeaderValue) -> ApiClientError {
-        ApiClientError::InvalidHeaderValue(err)
+impl From<UrlParseError> for ApiError {
+    fn from(err: UrlParseError) -> ApiError {
+        ApiError::InvalidUserInput(InvalidUserInputError::UrlParseError(err))
+    }
+}
+
+impl From<ReqwestError> for ApiError {
+    fn from(err: ReqwestError) -> ApiError {
+        ApiError::ProcessingError(ProcessingError::Network(err))
+    }
+}
+
+impl From<SerdeError> for ApiError {
+    fn from(err: SerdeError) -> ApiError {
+        ApiError::ProcessingError(ProcessingError::Deserialization(err))
     }
 }
