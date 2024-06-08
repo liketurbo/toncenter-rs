@@ -6,18 +6,18 @@ use std::fmt;
 use url::ParseError as UrlParseError;
 
 #[derive(Debug)]
-pub enum ApiError {
-    InvalidUserInput(InvalidUserInputError),
-    ProcessingError(ProcessingError),
+pub enum ToncenterError {
+    InvalidInput(InvalidInputError),
+    Processing(ProcessingError),
     RateLimitExceeded,
-    ClientError { code: u32, message: String },
-    ServerError { code: u32, message: String },
+    Client { code: u32, message: String },
+    Server { code: u32, message: String },
 }
 
 #[derive(Debug)]
-pub enum InvalidUserInputError {
-    InvalidHeaderValue(InvalidHeaderValue),
-    UrlParseError(UrlParseError),
+pub enum InvalidInputError {
+    HeaderValue(InvalidHeaderValue),
+    UrlParse(UrlParseError),
 }
 
 #[derive(Debug)]
@@ -26,29 +26,27 @@ pub enum ProcessingError {
     Deserialization(SerdeError),
 }
 
-impl fmt::Display for ApiError {
+impl fmt::Display for ToncenterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ApiError::InvalidUserInput(err) => write!(f, "Invalid user input: {}", err),
-            ApiError::ProcessingError(err) => write!(f, "Processing error: {}", err),
-            ApiError::RateLimitExceeded => write!(f, "Rate limit exceeded"),
-            ApiError::ClientError { code, message } => {
+            ToncenterError::InvalidInput(err) => write!(f, "Invalid input: {}", err),
+            ToncenterError::Processing(err) => write!(f, "Processing error: {}", err),
+            ToncenterError::RateLimitExceeded => write!(f, "Rate limit exceeded"),
+            ToncenterError::Client { code, message } => {
                 write!(f, "Client error {}: {}", code, message)
             }
-            ApiError::ServerError { code, message } => {
+            ToncenterError::Server { code, message } => {
                 write!(f, "Server error {}: {}", code, message)
             }
         }
     }
 }
 
-impl fmt::Display for InvalidUserInputError {
+impl fmt::Display for InvalidInputError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InvalidUserInputError::InvalidHeaderValue(err) => {
-                write!(f, "Invalid header value: {}", err)
-            }
-            InvalidUserInputError::UrlParseError(err) => write!(f, "URL parse error: {}", err),
+            InvalidInputError::HeaderValue(err) => write!(f, "Invalid header value: {}", err),
+            InvalidInputError::UrlParse(err) => write!(f, "URL parse error: {}", err),
         }
     }
 }
@@ -62,28 +60,28 @@ impl fmt::Display for ProcessingError {
     }
 }
 
-impl Error for ApiError {}
+impl Error for ToncenterError {}
 
-impl From<InvalidHeaderValue> for ApiError {
-    fn from(err: InvalidHeaderValue) -> ApiError {
-        ApiError::InvalidUserInput(InvalidUserInputError::InvalidHeaderValue(err))
+impl From<InvalidHeaderValue> for ToncenterError {
+    fn from(err: InvalidHeaderValue) -> ToncenterError {
+        ToncenterError::InvalidInput(InvalidInputError::HeaderValue(err))
     }
 }
 
-impl From<UrlParseError> for ApiError {
-    fn from(err: UrlParseError) -> ApiError {
-        ApiError::InvalidUserInput(InvalidUserInputError::UrlParseError(err))
+impl From<UrlParseError> for ToncenterError {
+    fn from(err: UrlParseError) -> ToncenterError {
+        ToncenterError::InvalidInput(InvalidInputError::UrlParse(err))
     }
 }
 
-impl From<ReqwestError> for ApiError {
-    fn from(err: ReqwestError) -> ApiError {
-        ApiError::ProcessingError(ProcessingError::Network(err))
+impl From<ReqwestError> for ToncenterError {
+    fn from(err: ReqwestError) -> ToncenterError {
+        ToncenterError::Processing(ProcessingError::Network(err))
     }
 }
 
-impl From<SerdeError> for ApiError {
-    fn from(err: SerdeError) -> ApiError {
-        ApiError::ProcessingError(ProcessingError::Deserialization(err))
+impl From<SerdeError> for ToncenterError {
+    fn from(err: SerdeError) -> ToncenterError {
+        ToncenterError::Processing(ProcessingError::Deserialization(err))
     }
 }

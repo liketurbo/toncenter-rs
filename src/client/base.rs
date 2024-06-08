@@ -1,5 +1,5 @@
 use crate::{
-    error::ApiError,
+    error::ToncenterError,
     models::{ApiResponse, ApiResponseResult},
 };
 use log::debug;
@@ -37,7 +37,7 @@ impl BaseApiClient {
         base_url: &str,
         endpoint: &str,
         params: &[(&str, &str)],
-    ) -> Result<T, ApiError> {
+    ) -> Result<T, ToncenterError> {
         let mut headers = HeaderMap::new();
         let mut query_params = params.to_vec();
 
@@ -71,7 +71,7 @@ impl BaseApiClient {
                 return Ok(result);
             }
 
-            return Err(ApiError::ServerError {
+            return Err(ToncenterError::Server {
                 code: 500,
                 message: "Invalid response from server, expected 'result'".to_string(),
             });
@@ -86,21 +86,21 @@ impl BaseApiClient {
                     .or(result)
                     .unwrap_or_else(|| "Unknown error".to_string());
                 if code == 429 {
-                    return Err(ApiError::RateLimitExceeded);
+                    return Err(ToncenterError::RateLimitExceeded);
                 } else if (400..500).contains(&code) {
-                    return Err(ApiError::ClientError {
+                    return Err(ToncenterError::Client {
                         code,
                         message: error_message,
                     });
                 } else {
-                    return Err(ApiError::ServerError {
+                    return Err(ToncenterError::Server {
                         code,
                         message: error_message,
                     });
                 }
             }
 
-            return Err(ApiError::ServerError {
+            return Err(ToncenterError::Server {
                 code: 500,
                 message: "Invalid response from server, expected 'result' or 'error'".to_string(),
             });
@@ -112,7 +112,7 @@ impl BaseApiClient {
         base_url: &str,
         endpoint: &str,
         body: &B,
-    ) -> Result<T, ApiError> {
+    ) -> Result<T, ToncenterError> {
         let mut headers = HeaderMap::new();
         let mut query_params = vec![];
 
@@ -150,7 +150,7 @@ impl BaseApiClient {
                 return Ok(result);
             }
 
-            return Err(ApiError::ServerError {
+            return Err(ToncenterError::Server {
                 code: 500,
                 message: "Invalid response from server, expected 'result'".to_string(),
             });
@@ -165,21 +165,21 @@ impl BaseApiClient {
                     .or(result)
                     .unwrap_or_else(|| "Unknown error".to_string());
                 if code == 429 {
-                    return Err(ApiError::RateLimitExceeded);
+                    return Err(ToncenterError::RateLimitExceeded);
                 } else if (400..500).contains(&code) {
-                    return Err(ApiError::ClientError {
+                    return Err(ToncenterError::Client {
                         code,
                         message: error_message,
                     });
                 } else {
-                    return Err(ApiError::ServerError {
+                    return Err(ToncenterError::Server {
                         code,
                         message: error_message,
                     });
                 }
             }
 
-            return Err(ApiError::ServerError {
+            return Err(ToncenterError::Server {
                 code: 500,
                 message: "Invalid response from server, expected 'result' or 'error'".to_string(),
             });
