@@ -7,15 +7,15 @@ use url::ParseError as UrlParseError;
 
 #[derive(Debug)]
 pub enum ToncenterError {
-    InvalidInput(InvalidInputError),
-    Processing(ProcessingError),
+    InvalidInput(InvalidInput),
+    ProcessingError(ProcessingError),
     RateLimitExceeded,
-    Client { code: u32, message: String },
-    Server { code: u32, message: String },
+    HttpClientError { code: u32, message: String },
+    HttpServerError { code: u32, message: String },
 }
 
 #[derive(Debug)]
-pub enum InvalidInputError {
+pub enum InvalidInput {
     HeaderValue(InvalidHeaderValue),
     UrlParse(UrlParseError),
 }
@@ -30,23 +30,23 @@ impl fmt::Display for ToncenterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ToncenterError::InvalidInput(err) => write!(f, "Invalid input: {}", err),
-            ToncenterError::Processing(err) => write!(f, "Processing error: {}", err),
+            ToncenterError::ProcessingError(err) => write!(f, "Processing error: {}", err),
             ToncenterError::RateLimitExceeded => write!(f, "Rate limit exceeded"),
-            ToncenterError::Client { code, message } => {
+            ToncenterError::HttpClientError { code, message } => {
                 write!(f, "Client error {}: {}", code, message)
             }
-            ToncenterError::Server { code, message } => {
+            ToncenterError::HttpServerError { code, message } => {
                 write!(f, "Server error {}: {}", code, message)
             }
         }
     }
 }
 
-impl fmt::Display for InvalidInputError {
+impl fmt::Display for InvalidInput {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            InvalidInputError::HeaderValue(err) => write!(f, "Invalid header value: {}", err),
-            InvalidInputError::UrlParse(err) => write!(f, "URL parse error: {}", err),
+            InvalidInput::HeaderValue(err) => write!(f, "Invalid header value: {}", err),
+            InvalidInput::UrlParse(err) => write!(f, "URL parse error: {}", err),
         }
     }
 }
@@ -64,24 +64,24 @@ impl Error for ToncenterError {}
 
 impl From<InvalidHeaderValue> for ToncenterError {
     fn from(err: InvalidHeaderValue) -> ToncenterError {
-        ToncenterError::InvalidInput(InvalidInputError::HeaderValue(err))
+        ToncenterError::InvalidInput(InvalidInput::HeaderValue(err))
     }
 }
 
 impl From<UrlParseError> for ToncenterError {
     fn from(err: UrlParseError) -> ToncenterError {
-        ToncenterError::InvalidInput(InvalidInputError::UrlParse(err))
+        ToncenterError::InvalidInput(InvalidInput::UrlParse(err))
     }
 }
 
 impl From<ReqwestError> for ToncenterError {
     fn from(err: ReqwestError) -> ToncenterError {
-        ToncenterError::Processing(ProcessingError::Network(err))
+        ToncenterError::ProcessingError(ProcessingError::Network(err))
     }
 }
 
 impl From<SerdeError> for ToncenterError {
     fn from(err: SerdeError) -> ToncenterError {
-        ToncenterError::Processing(ProcessingError::Deserialization(err))
+        ToncenterError::ProcessingError(ProcessingError::Deserialization(err))
     }
 }

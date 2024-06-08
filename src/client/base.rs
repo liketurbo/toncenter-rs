@@ -71,7 +71,7 @@ impl BaseApiClient {
                 return Ok(result);
             }
 
-            return Err(ToncenterError::Server {
+            return Err(ToncenterError::HttpServerError {
                 code: 500,
                 message: "Invalid response from server, expected 'result'".to_string(),
             });
@@ -88,19 +88,19 @@ impl BaseApiClient {
                 if code == 429 {
                     return Err(ToncenterError::RateLimitExceeded);
                 } else if (400..500).contains(&code) {
-                    return Err(ToncenterError::Client {
+                    return Err(ToncenterError::HttpClientError {
                         code,
                         message: error_message,
                     });
                 } else {
-                    return Err(ToncenterError::Server {
+                    return Err(ToncenterError::HttpServerError {
                         code,
                         message: error_message,
                     });
                 }
             }
 
-            return Err(ToncenterError::Server {
+            return Err(ToncenterError::HttpServerError {
                 code: 500,
                 message: "Invalid response from server, expected 'result' or 'error'".to_string(),
             });
@@ -150,7 +150,7 @@ impl BaseApiClient {
                 return Ok(result);
             }
 
-            return Err(ToncenterError::Server {
+            return Err(ToncenterError::HttpServerError {
                 code: 500,
                 message: "Invalid response from server, expected 'result'".to_string(),
             });
@@ -167,19 +167,19 @@ impl BaseApiClient {
                 if code == 429 {
                     return Err(ToncenterError::RateLimitExceeded);
                 } else if (400..500).contains(&code) {
-                    return Err(ToncenterError::Client {
+                    return Err(ToncenterError::HttpClientError {
                         code,
                         message: error_message,
                     });
                 } else {
-                    return Err(ToncenterError::Server {
+                    return Err(ToncenterError::HttpServerError {
                         code,
                         message: error_message,
                     });
                 }
             }
 
-            return Err(ToncenterError::Server {
+            return Err(ToncenterError::HttpServerError {
                 code: 500,
                 message: "Invalid response from server, expected 'result' or 'error'".to_string(),
             });
