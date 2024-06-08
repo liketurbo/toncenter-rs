@@ -349,3 +349,48 @@ pub struct RunGetMethodResponse {
     #[serde(rename = "@extra")]
     pub extra: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct SendBocResponse {
+    #[serde(rename = "@type")]
+    pub type_field: String,
+    #[serde(rename = "@extra")]
+    pub extra: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SendBocHashResponse {
+    #[serde(rename = "@type")]
+    pub type_field: String,
+    pub hash: String,
+    #[serde(rename = "@extra")]
+    pub extra: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SendQueryResponse {
+    #[serde(rename = "@type")]
+    pub type_field: String,
+    #[serde(rename = "@extra")]
+    pub extra: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EstimateFeeResponse {
+    #[serde(rename = "@type")]
+    pub type_field: String,
+    pub source_fees: Fees,
+    pub destination_fees: Vec<Fees>,
+    #[serde(rename = "@extra")]
+    pub extra: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Fees {
+    #[serde(rename = "@type")]
+    pub type_field: String,
+    pub in_fwd_fee: u64,
+    pub storage_fee: u64,
+    pub gas_fee: u64,
+    pub fwd_fee: u64,
+}

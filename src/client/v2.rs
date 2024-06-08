@@ -1,10 +1,13 @@
+use super::base::Network;
 use crate::client::base::{ApiKey, BaseApiClient};
 use crate::error::ApiError;
 use crate::models::{
-    AddressInformation, BlockHeader, BlockIdExt, BlockTransactions, ConfigParamResponse, ConsensusBlock, DetectAddressResult, ExtendedAddressInformation, MasterchainBlockSignatures, MasterchainInfo, RunGetMethodResponse, ShardBlockProof, ShardsResult, TokenData, Transaction, TryLocateTxResponse, WalletInformation
+    AddressInformation, BlockHeader, BlockIdExt, BlockTransactions, ConfigParamResponse,
+    ConsensusBlock, DetectAddressResult, EstimateFeeResponse, ExtendedAddressInformation,
+    MasterchainBlockSignatures, MasterchainInfo, RunGetMethodResponse, SendBocHashResponse,
+    SendBocResponse, SendQueryResponse, ShardBlockProof, ShardsResult, TokenData, Transaction,
+    TryLocateTxResponse, WalletInformation,
 };
-
-use super::base::Network;
 
 pub struct ApiClientV2 {
     base_client: BaseApiClient,
@@ -193,10 +196,7 @@ impl ApiClientV2 {
     /// # Parameters
     ///
     /// * `address` - Identifier of the target TON account in any form.
-    pub async fn detect_address(
-        &self,
-        address: &str,
-    ) -> Result<DetectAddressResult, ApiError> {
+    pub async fn detect_address(&self, address: &str) -> Result<DetectAddressResult, ApiError> {
         let params = [("address", address)];
 
         self.base_client
@@ -226,6 +226,7 @@ impl ApiClientV2 {
     ) -> Result<MasterchainBlockSignatures, ApiError> {
         let seqno_string = seqno.to_string();
         let seqno_ref = seqno_string.as_str();
+
         let params = [("seqno", seqno_ref)];
 
         self.base_client
@@ -319,6 +320,7 @@ impl ApiClientV2 {
     pub async fn get_shards(&self, seqno: u32) -> Result<ShardsResult, ApiError> {
         let seqno_string = seqno.to_string();
         let seqno_ref = seqno_string.as_str();
+
         let params = [("seqno", seqno_ref)];
 
         self.base_client
@@ -499,10 +501,13 @@ impl ApiClientV2 {
         seqno: Option<u32>,
     ) -> Result<ConfigParamResponse, ApiError> {
         let mut params: Vec<(&str, String)> = vec![("config_id", config_id.to_string())];
+
         if let Some(seqno) = seqno {
             params.push(("seqno", seqno.to_string()));
         }
+
         let params: Vec<(&str, &str)> = params.iter().map(|(k, v)| (*k, v.as_str())).collect();
+
         self.base_client
             .get(&self.base_url, "getConfigParam", &params)
             .await
@@ -528,11 +533,118 @@ impl ApiClientV2 {
         });
 
         self.base_client
-            .post(
-                &self.base_url,
-                "runGetMethod",
-                &request_body,
-            )
+            .post(&self.base_url, "runGetMethod", &request_body)
+            .await
+    }
+
+    /// Send serialized BOC file: fully packed and serialized external message to blockchain.
+    ///
+    /// # Parameters
+    ///
+    /// * `boc` - Serialized BOC file (b64-encoded).
+    pub async fn send_boc(&self, boc: &str) -> Result<SendBocResponse, ApiError> {
+        let body = serde_json::json!({
+            "boc": boc,
+        });
+        self.base_client
+            .post(&self.base_url, "sendBoc", &body)
+            .await
+    }
+
+    /// Send serialized BOC file: fully packed and serialized external message to blockchain.
+    /// The method returns message hash.
+    ///
+    /// # Parameters
+    ///
+    /// * `boc` - Serialized BOC file (b64-encoded).
+    pub async fn send_boc_return_hash(&self, boc: &str) -> Result<SendBocHashResponse, ApiError> {
+        let body = serde_json::json!({
+            "boc": boc,
+        });
+        self.base_client
+            .post(&self.base_url, "sendBocReturnHash", &body)
+            .await
+    }
+
+    /// This method takes address, body and init-params (if any), packs it to external message and sends to network.
+    /// All params should be BOC-serialized.
+    ///
+    /// # Parameters
+    ///
+    /// * `address` - The target address.
+    /// * `body` - Optional BOC-serialized body (b64-encoded).
+    /// * `init_code` - Optional BOC-serialized init code (b64-encoded).
+    /// * `init_data` - Optional BOC-serialized init data (b64-encoded).
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing `SendQueryResponse` on success, or `ApiError` on failure.
+    pub async fn send_query(
+        &self,
+        address: &str,
+        body: Option<&str>,
+        init_code: Option<&str>,
+        init_data: Option<&str>,
+    ) -> Result<SendQueryResponse, ApiError> {
+        let mut request_body = serde_json::json!({
+            "address": address,
+        });
+
+        if let Some(b) = body {
+            request_body["body"] = serde_json::json!(b);
+        }
+        if let Some(code) = init_code {
+            request_body["init_code"] = serde_json::json!(code);
+        }
+        if let Some(data) = init_data {
+            request_body["init_data"] = serde_json::json!(data);
+        }
+
+        self.base_client
+            .post(&self.base_url, "sendQuery", &request_body)
+            .await
+    }
+
+    /// Estimate fees required for query processing.
+    /// `body`, `init_code`, and `init_data` accepted in serialized format (b64-encoded).
+    ///
+    /// # Parameters
+    ///
+    /// * `address` - The target address.
+    /// * `body` - Optional BOC-serialized body (b64-encoded).
+    /// * `init_code` - Optional BOC-serialized init code (b64-encoded).
+    /// * `init_data` - Optional BOC-serialized init data (b64-encoded).
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing `EstimateFeeResponse` on success, or `ApiError` on failure.
+    pub async fn estimate_fee(
+        &self,
+        address: &str,
+        body: Option<&str>,
+        init_code: Option<&str>,
+        init_data: Option<&str>,
+        ignore_chksig: Option<bool>,
+    ) -> Result<EstimateFeeResponse, ApiError> {
+        let mut request_body = serde_json::json!({
+            "address": address,
+        });
+
+        if let Some(b) = body {
+            request_body["body"] = serde_json::json!(b);
+        }
+        if let Some(code) = init_code {
+            request_body["init_code"] = serde_json::json!(code);
+        }
+        if let Some(data) = init_data {
+            request_body["init_data"] = serde_json::json!(data);
+        }
+        if let Some(chksig) = ignore_chksig {
+            request_body["ignore_chksig"] = serde_json::json!(chksig);
+        }
+
+        self.base_client
+            .post(&self.base_url, "estimateFee", &request_body)
             .await
     }
 }
