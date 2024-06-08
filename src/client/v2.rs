@@ -3,9 +3,9 @@ use crate::client::base::{ApiKey, BaseApiClient};
 use crate::error::ToncenterError;
 use crate::models::{
     BlocksHeader, BlocksMasterchainInfo, BlocksShardBlockProof, BlocksShards, BlocksTransactions,
-    ConfigInfo, ConsensusBlock, DetectAddressResult, FullAccountState, MasterchainBlockSignatures,
-    QueryFees, RawExtMessageInfo, RawFullAccountState, RawTransaction, SmcRunResult, Success,
-    TokenData, TonBlockIdExt, WalletInformation,
+    ConfigInfo, ConsensusBlock, DetectAddressResult, FullAccountState, JsonRpcRequest,
+    MasterchainBlockSignatures, QueryFees, RawExtMessageInfo, RawFullAccountState, RawTransaction,
+    SmcRunResult, Success, TokenData, TonBlockIdExt, WalletInformation,
 };
 
 pub struct ApiClientV2 {
@@ -535,7 +535,7 @@ impl ApiClientV2 {
         });
 
         self.base_client
-            .post(&self.base_url, "runGetMethod", &request_body)
+            .post_api(&self.base_url, "runGetMethod", &request_body)
             .await
     }
 
@@ -549,7 +549,7 @@ impl ApiClientV2 {
             "boc": boc,
         });
         self.base_client
-            .post(&self.base_url, "sendBoc", &body)
+            .post_api(&self.base_url, "sendBoc", &body)
             .await
     }
 
@@ -567,7 +567,7 @@ impl ApiClientV2 {
             "boc": boc,
         });
         self.base_client
-            .post(&self.base_url, "sendBocReturnHash", &body)
+            .post_api(&self.base_url, "sendBocReturnHash", &body)
             .await
     }
 
@@ -606,7 +606,7 @@ impl ApiClientV2 {
         }
 
         self.base_client
-            .post(&self.base_url, "sendQuery", &request_body)
+            .post_api(&self.base_url, "sendQuery", &request_body)
             .await
     }
 
@@ -649,7 +649,32 @@ impl ApiClientV2 {
         }
 
         self.base_client
-            .post(&self.base_url, "estimateFee", &request_body)
+            .post_api(&self.base_url, "estimateFee", &request_body)
+            .await
+    }
+
+    /// Generic JSON-RPC method to interact with Toncenter API.
+    ///
+    /// # Parameters
+    ///
+    /// * `method` - The JSON-RPC method name.
+    /// * `params` - Parameters for the JSON-RPC method.
+    /// * `id` - The JSON-RPC request ID.
+    pub async fn json_rpc(
+        &self,
+        method: &str,
+        params: serde_json::Value,
+        id: serde_json::Value,
+    ) -> Result<serde_json::Value, ToncenterError> {
+        let request_body = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            method: method.to_string(),
+            params,
+            id,
+        };
+
+        self.base_client
+            .post_rpc(&self.base_url, "jsonRPC", &request_body)
             .await
     }
 }

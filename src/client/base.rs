@@ -1,10 +1,10 @@
 use crate::{
     error::ToncenterError,
-    models::{ApiResponse, ApiResponseResult},
+    models::{ApiResponse, ApiResponseResult, JsonRpcResponse, JsonRpcResult},
 };
 use log::debug;
 use reqwest::{header::HeaderMap, Client};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 #[derive(Debug)]
 pub enum Network {
@@ -32,11 +32,13 @@ impl BaseApiClient {
         }
     }
 
-    pub async fn get<T: for<'de> Deserialize<'de> + std::fmt::Debug>(
+    async fn send_request<T: DeserializeOwned + std::fmt::Debug>(
         &self,
+        method: reqwest::Method,
         base_url: &str,
         endpoint: &str,
         params: &[(&str, &str)],
+        body: Option<&impl Serialize>,
     ) -> Result<T, ToncenterError> {
         let mut headers = HeaderMap::new();
         let mut query_params = params.to_vec();
@@ -54,135 +56,130 @@ impl BaseApiClient {
 
         let url = format!("{}{}", base_url, endpoint);
         let url_with_params = reqwest::Url::parse_with_params(&url, query_params)?;
-        let request = self.client.get(url_with_params).headers(headers);
-        debug!("Request after processing: {:?}", request);
+        let request_builder = match method {
+            reqwest::Method::GET => self.client.get(url_with_params).headers(headers),
+            reqwest::Method::POST => {
+                let builder = self.client.post(url_with_params).headers(headers);
+                if let Some(body) = body {
+                    builder.json(body)
+                } else {
+                    builder
+                }
+            }
+            _ => unimplemented!(),
+        };
 
-        let response = request.send().await?;
+        debug!("Request after processing: {:?}", request_builder);
+
+        let response = request_builder.send().await?;
         debug!("Received response: {:?}", response);
 
         let response_text = response.text().await?;
         debug!("Response text: {}", response_text);
 
-        let response_body: ApiResponse<T> = serde_json::from_str(&response_text)?;
+        let response_body: T = serde_json::from_str(&response_text)?;
         debug!("Response body: {:?}", response_body);
 
-        if response_body.ok {
-            if let ApiResponseResult::Success { result } = response_body.data {
-                return Ok(result);
-            }
-
-            return Err(ToncenterError::HttpServerError {
-                code: 500,
-                message: "Invalid response from server, expected 'result'".to_string(),
-            });
-        } else {
-            if let ApiResponseResult::Error {
-                result,
-                error,
-                code,
-            } = response_body.data
-            {
-                let error_message = error
-                    .or(result)
-                    .unwrap_or_else(|| "Unknown error".to_string());
-                if code == 429 {
-                    return Err(ToncenterError::RateLimitExceeded);
-                } else if (400..500).contains(&code) {
-                    return Err(ToncenterError::HttpClientError {
-                        code,
-                        message: error_message,
-                    });
-                } else {
-                    return Err(ToncenterError::HttpServerError {
-                        code,
-                        message: error_message,
-                    });
-                }
-            }
-
-            return Err(ToncenterError::HttpServerError {
-                code: 500,
-                message: "Invalid response from server, expected 'result' or 'error'".to_string(),
-            });
-        }
+        Ok(response_body)
     }
 
-    pub async fn post<T: for<'de> Deserialize<'de> + std::fmt::Debug, B: Serialize>(
+    pub async fn get<T: DeserializeOwned + std::fmt::Debug>(
         &self,
         base_url: &str,
         endpoint: &str,
-        body: &B,
+        params: &[(&str, &str)],
     ) -> Result<T, ToncenterError> {
-        let mut headers = HeaderMap::new();
-        let mut query_params = vec![];
+        let response_body: ApiResponse<T> = self
+            .send_request(
+                reqwest::Method::GET,
+                base_url,
+                endpoint,
+                params,
+                None::<&serde_json::Value>,
+            )
+            .await?;
+        self.handle_api_response(response_body).await
+    }
 
-        if let Some(ref key) = self.api_key {
-            match key {
-                ApiKey::Header(key) => {
-                    headers.insert("x-api-key", key.parse()?);
-                }
-                ApiKey::Query(key) => {
-                    query_params.push(("api_key", key));
-                }
-            };
+    pub async fn post_api<T: DeserializeOwned + std::fmt::Debug>(
+        &self,
+        base_url: &str,
+        endpoint: &str,
+        body: &impl Serialize,
+    ) -> Result<T, ToncenterError> {
+        let response_body: ApiResponse<T> = self
+            .send_request(reqwest::Method::POST, base_url, endpoint, &[], Some(body))
+            .await?;
+        self.handle_api_response(response_body).await
+    }
+
+    pub async fn post_rpc<T: DeserializeOwned + std::fmt::Debug>(
+        &self,
+        base_url: &str,
+        endpoint: &str,
+        body: &impl Serialize,
+    ) -> Result<T, ToncenterError> {
+        let response_body: JsonRpcResponse<T> = self
+            .send_request(reqwest::Method::POST, base_url, endpoint, &[], Some(body))
+            .await?;
+
+        if response_body.ok {
+            if let JsonRpcResult::Success { result } = response_body.data {
+                return Ok(result);
+            }
+
+            unreachable!("Invalid response from server, expected 'result'");
         }
 
-        let url = format!("{}{}", base_url, endpoint);
-        let url_with_params = reqwest::Url::parse_with_params(&url, query_params)?;
-        let request = self
-            .client
-            .post(url_with_params)
-            .headers(headers)
-            .json(body);
-        debug!("Request after processing: {:?}", request);
+        if let JsonRpcResult::Error {
+            result,
+            error,
+            code,
+        } = response_body.data
+        {
+            let error_message = error
+                .or(result)
+                .unwrap_or_else(|| "Unknown error".to_string());
+            self.handle_error(code, error_message)?;
+        }
 
-        let response = request.send().await?;
-        debug!("Received response: {:?}", response);
+        unreachable!("Invalid response from server, expected 'result' or 'error'");
+    }
 
-        let response_text = response.text().await?;
-        debug!("Response text: {}", response_text);
-
-        let response_body: ApiResponse<T> = serde_json::from_str(&response_text)?;
-        debug!("Response body: {:?}", response_body);
-
+    async fn handle_api_response<T: DeserializeOwned + std::fmt::Debug>(
+        &self,
+        response_body: ApiResponse<T>,
+    ) -> Result<T, ToncenterError> {
         if response_body.ok {
             if let ApiResponseResult::Success { result } = response_body.data {
                 return Ok(result);
             }
 
-            return Err(ToncenterError::HttpServerError {
-                code: 500,
-                message: "Invalid response from server, expected 'result'".to_string(),
-            });
-        } else {
-            if let ApiResponseResult::Error {
-                result,
-                error,
-                code,
-            } = response_body.data
-            {
-                let error_message = error
-                    .or(result)
-                    .unwrap_or_else(|| "Unknown error".to_string());
-                if code == 429 {
-                    return Err(ToncenterError::RateLimitExceeded);
-                } else if (400..500).contains(&code) {
-                    return Err(ToncenterError::HttpClientError {
-                        code,
-                        message: error_message,
-                    });
-                } else {
-                    return Err(ToncenterError::HttpServerError {
-                        code,
-                        message: error_message,
-                    });
-                }
-            }
+            unreachable!("Invalid response from server, expected 'result'");
+        }
 
-            return Err(ToncenterError::HttpServerError {
-                code: 500,
-                message: "Invalid response from server, expected 'result' or 'error'".to_string(),
-            });
+        if let ApiResponseResult::Error {
+            result,
+            error,
+            code,
+        } = response_body.data
+        {
+            let error_message = error
+                .or(result)
+                .unwrap_or_else(|| "Unknown error".to_string());
+            self.handle_error(code, error_message)?;
+        }
+
+        unreachable!("Invalid response from server, expected 'result' or 'error'");
+    }
+
+    fn handle_error(&self, code: u32, message: String) -> Result<(), ToncenterError> {
+        if code == 429 {
+            Err(ToncenterError::RateLimitExceeded)
+        } else if (400..500).contains(&code) {
+            Err(ToncenterError::HttpClientError { code, message })
+        } else {
+            Err(ToncenterError::HttpServerError { code, message })
         }
     }
 }

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct ApiResponse<T> {
@@ -331,4 +331,34 @@ pub struct Fees {
     pub storage_fee: u64,
     pub gas_fee: u64,
     pub fwd_fee: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct JsonRpcRequest {
+    pub jsonrpc: String,
+    pub method: String,
+    pub params: serde_json::Value,
+    pub id: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct JsonRpcResponse<T> {
+    pub ok: bool,
+    pub jsonrpc: String,
+    #[serde(flatten)]
+    pub data: JsonRpcResult<T>,
+    pub id: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+pub enum JsonRpcResult<T> {
+    Success {
+        result: T,
+    },
+    Error {
+        result: Option<String>,
+        error: Option<String>,
+        code: u32,
+    },
 }
