@@ -2,11 +2,10 @@ use super::base::Network;
 use crate::client::base::{ApiKey, BaseApiClient};
 use crate::error::ToncenterError;
 use crate::models::{
-    AddressInformation, BlockHeader, BlockIdExt, BlockTransactions, ConfigParamResponse,
-    ConsensusBlock, DetectAddressResult, EstimateFeeResponse, ExtendedAddressInformation,
-    MasterchainBlockSignatures, MasterchainInfo, RunGetMethodResponse, SendBocHashResponse,
-    SendBocResponse, SendQueryResponse, ShardBlockProof, ShardsResult, TokenData, Transaction,
-    TryLocateTxResponse, WalletInformation,
+    BlocksHeader, BlocksMasterchainInfo, BlocksShardBlockProof, BlocksShards, BlocksTransactions,
+    ConfigInfo, ConsensusBlock, DetectAddressResult, FullAccountState, MasterchainBlockSignatures,
+    QueryFees, RawExtMessageInfo, RawFullAccountState, RawTransaction, SmcRunResult, Success,
+    TokenData, TonBlockIdExt, WalletInformation,
 };
 
 pub struct ApiClientV2 {
@@ -35,7 +34,7 @@ impl ApiClientV2 {
     pub async fn get_address_information(
         &self,
         address: &str,
-    ) -> Result<AddressInformation, ToncenterError> {
+    ) -> Result<RawFullAccountState, ToncenterError> {
         let params = [("address", address)];
 
         self.base_client
@@ -55,7 +54,7 @@ impl ApiClientV2 {
     pub async fn get_extended_address_information(
         &self,
         address: &str,
-    ) -> Result<ExtendedAddressInformation, ToncenterError> {
+    ) -> Result<FullAccountState, ToncenterError> {
         let params = [("address", address)];
 
         self.base_client
@@ -100,7 +99,7 @@ impl ApiClientV2 {
         hash: Option<&str>,
         to_lt: Option<u64>,
         archival: Option<bool>,
-    ) -> Result<Vec<Transaction>, ToncenterError> {
+    ) -> Result<Vec<RawTransaction>, ToncenterError> {
         let mut params: Vec<(&str, String)> = vec![("address", address.to_string())];
 
         if let Some(limit) = limit {
@@ -212,7 +211,7 @@ impl ApiClientV2 {
     /// # Parameters
     ///
     /// * `address` - Identifier of the target TON account in any form.
-    pub async fn get_masterchain_info(&self) -> Result<MasterchainInfo, ToncenterError> {
+    pub async fn get_masterchain_info(&self) -> Result<BlocksMasterchainInfo, ToncenterError> {
         self.base_client
             .get(&self.base_url, "getMasterchainInfo", &[])
             .await
@@ -251,7 +250,7 @@ impl ApiClientV2 {
         shard: &str,
         seqno: u32,
         from_seqno: Option<u32>,
-    ) -> Result<ShardBlockProof, ToncenterError> {
+    ) -> Result<BlocksShardBlockProof, ToncenterError> {
         let mut params: Vec<(&str, String)> = vec![
             ("workchain", workchain.to_string()),
             ("shard", shard.to_string()),
@@ -292,7 +291,7 @@ impl ApiClientV2 {
         seqno: Option<u32>,
         lt: Option<u64>,
         unixtime: Option<u64>,
-    ) -> Result<BlockIdExt, ToncenterError> {
+    ) -> Result<TonBlockIdExt, ToncenterError> {
         let mut params: Vec<(&str, String)> = vec![
             ("workchain", workchain.to_string()),
             ("shard", shard.to_string()),
@@ -320,7 +319,7 @@ impl ApiClientV2 {
     /// # Parameters
     ///
     /// * `seqno` - Masterchain seqno to fetch shards of.
-    pub async fn get_shards(&self, seqno: u32) -> Result<ShardsResult, ToncenterError> {
+    pub async fn get_shards(&self, seqno: u32) -> Result<BlocksShards, ToncenterError> {
         let seqno_string = seqno.to_string();
         let seqno_ref = seqno_string.as_str();
 
@@ -353,7 +352,7 @@ impl ApiClientV2 {
         after_lt: Option<u64>,
         after_hash: Option<&str>,
         count: Option<u32>,
-    ) -> Result<BlockTransactions, ToncenterError> {
+    ) -> Result<BlocksTransactions, ToncenterError> {
         let mut params: Vec<(&str, String)> = vec![
             ("workchain", workchain.to_string()),
             ("shard", shard.to_string()),
@@ -399,7 +398,7 @@ impl ApiClientV2 {
         seqno: u32,
         root_hash: Option<&str>,
         file_hash: Option<&str>,
-    ) -> Result<BlockHeader, ToncenterError> {
+    ) -> Result<BlocksHeader, ToncenterError> {
         let mut params: Vec<(&str, String)> = vec![
             ("workchain", workchain.to_string()),
             ("shard", shard.to_string()),
@@ -432,7 +431,7 @@ impl ApiClientV2 {
         source: &str,
         destination: &str,
         created_lt: u64,
-    ) -> Result<TryLocateTxResponse, ToncenterError> {
+    ) -> Result<RawTransaction, ToncenterError> {
         let params = [
             ("source", source),
             ("destination", destination),
@@ -456,7 +455,7 @@ impl ApiClientV2 {
         source: &str,
         destination: &str,
         created_lt: u64,
-    ) -> Result<TryLocateTxResponse, ToncenterError> {
+    ) -> Result<RawTransaction, ToncenterError> {
         let params = [
             ("source", source),
             ("destination", destination),
@@ -480,7 +479,7 @@ impl ApiClientV2 {
         source: &str,
         destination: &str,
         created_lt: u64,
-    ) -> Result<TryLocateTxResponse, ToncenterError> {
+    ) -> Result<RawTransaction, ToncenterError> {
         let params = [
             ("source", source),
             ("destination", destination),
@@ -502,7 +501,7 @@ impl ApiClientV2 {
         &self,
         config_id: u32,
         seqno: Option<u32>,
-    ) -> Result<ConfigParamResponse, ToncenterError> {
+    ) -> Result<ConfigInfo, ToncenterError> {
         let mut params: Vec<(&str, String)> = vec![("config_id", config_id.to_string())];
 
         if let Some(seqno) = seqno {
@@ -528,7 +527,7 @@ impl ApiClientV2 {
         address: &str,
         method: &str,
         stack: &[&str],
-    ) -> Result<RunGetMethodResponse, ToncenterError> {
+    ) -> Result<SmcRunResult, ToncenterError> {
         let request_body = serde_json::json!({
             "address": address,
             "method": method,
@@ -545,7 +544,7 @@ impl ApiClientV2 {
     /// # Parameters
     ///
     /// * `boc` - Serialized BOC file (b64-encoded).
-    pub async fn send_boc(&self, boc: &str) -> Result<SendBocResponse, ToncenterError> {
+    pub async fn send_boc(&self, boc: &str) -> Result<Success, ToncenterError> {
         let body = serde_json::json!({
             "boc": boc,
         });
@@ -563,7 +562,7 @@ impl ApiClientV2 {
     pub async fn send_boc_return_hash(
         &self,
         boc: &str,
-    ) -> Result<SendBocHashResponse, ToncenterError> {
+    ) -> Result<RawExtMessageInfo, ToncenterError> {
         let body = serde_json::json!({
             "boc": boc,
         });
@@ -591,7 +590,7 @@ impl ApiClientV2 {
         body: Option<&str>,
         init_code: Option<&str>,
         init_data: Option<&str>,
-    ) -> Result<SendQueryResponse, ToncenterError> {
+    ) -> Result<Success, ToncenterError> {
         let mut request_body = serde_json::json!({
             "address": address,
         });
@@ -631,7 +630,7 @@ impl ApiClientV2 {
         init_code: Option<&str>,
         init_data: Option<&str>,
         ignore_chksig: Option<bool>,
-    ) -> Result<EstimateFeeResponse, ToncenterError> {
+    ) -> Result<QueryFees, ToncenterError> {
         let mut request_body = serde_json::json!({
             "address": address,
         });

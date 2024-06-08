@@ -20,15 +20,14 @@ pub enum ApiResponseResult<T> {
     },
 }
 
+/// Represents `@type: raw.fullAccountState`.
 #[derive(Debug, Deserialize)]
-pub struct AddressInformation {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct RawFullAccountState {
     pub balance: String,
     pub code: Option<String>,
     pub data: Option<String>,
-    pub last_transaction_id: TransactionId,
-    pub block_id: BlockId,
+    pub last_transaction_id: InternalTransactionId,
+    pub block_id: TonBlockIdExt,
     pub frozen_hash: Option<String>,
     pub sync_utime: u64,
     #[serde(rename = "@extra")]
@@ -36,14 +35,13 @@ pub struct AddressInformation {
     pub state: String,
 }
 
+/// Represents `@type: fullAccountState`.
 #[derive(Debug, Deserialize)]
-pub struct ExtendedAddressInformation {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct FullAccountState {
     pub address: AccountAddress,
     pub balance: String,
-    pub last_transaction_id: TransactionId,
-    pub block_id: BlockId,
+    pub last_transaction_id: InternalTransactionId,
+    pub block_id: TonBlockIdExt,
     pub sync_utime: u64,
     pub account_state: AccountState,
     pub revision: i32,
@@ -51,10 +49,9 @@ pub struct ExtendedAddressInformation {
     pub extra: String,
 }
 
+/// Represents `@type: accountAddress`.
 #[derive(Debug, Deserialize)]
 pub struct AccountAddress {
-    #[serde(rename = "@type")]
-    pub type_field: String,
     pub account_address: String,
 }
 
@@ -62,28 +59,28 @@ pub struct AccountAddress {
 #[serde(tag = "@type")]
 pub enum AccountState {
     #[serde(rename = "uninited.accountState")]
-    Uninited { frozen_hash: String },
+    UninitedAccountState { frozen_hash: String },
     #[serde(rename = "wallet.v4.accountState")]
-    WalletV4 { wallet_id: String, seqno: u32 },
+    WalletV4AccountState { wallet_id: String, seqno: u32 },
 }
 
+/// Represents `@type: internal.transactionId`.
 #[derive(Debug, Deserialize)]
-pub struct TransactionId {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct InternalTransactionId {
     pub lt: String,
     pub hash: String,
 }
 
+/// Represents `@type: ton.blockIdExt`.
 #[derive(Debug, Deserialize)]
-pub struct BlockId {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct TonBlockIdExt {
     pub workchain: i32,
     pub shard: String,
     pub seqno: u32,
     pub root_hash: String,
     pub file_hash: String,
+    #[serde(rename = "@extra")]
+    pub extra: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,29 +90,27 @@ pub struct WalletInformation {
     pub account_state: String,
     pub wallet_type: String,
     pub seqno: u32,
-    pub last_transaction_id: TransactionId,
+    pub last_transaction_id: InternalTransactionId,
     pub wallet_id: u64,
 }
 
+/// Represents `@type: raw.transaction`.
 #[derive(Debug, Deserialize)]
-pub struct Transaction {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct RawTransaction {
     pub address: AccountAddress,
     pub utime: u64,
     pub data: String,
-    pub transaction_id: TransactionId,
+    pub transaction_id: InternalTransactionId,
     pub fee: String,
     pub storage_fee: String,
     pub other_fee: String,
-    pub in_msg: Option<Message>,
-    pub out_msgs: Vec<Message>,
+    pub in_msg: Option<RawMessage>,
+    pub out_msgs: Vec<RawMessage>,
 }
 
+/// Represents `@type: raw.message`.
 #[derive(Debug, Deserialize)]
-pub struct Message {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct RawMessage {
     pub source: Option<String>,
     pub destination: String,
     pub value: String,
@@ -123,14 +118,13 @@ pub struct Message {
     pub ihr_fee: String,
     pub created_lt: String,
     pub body_hash: String,
-    pub msg_data: MsgData,
+    pub msg_data: MsgDataRaw,
     pub message: Option<String>,
 }
 
+/// Represents `@type: msg.dataRaw`.
 #[derive(Debug, Deserialize)]
-pub struct MsgData {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct MsgDataRaw {
     pub body: Option<String>,
     pub init_state: Option<String>,
     pub text: Option<String>,
@@ -167,79 +161,57 @@ pub struct AddressFormat {
     pub b64url: String,
 }
 
+/// Represents `@type: blocks.masterchainInfo`.
 #[derive(Debug, Deserialize)]
-pub struct MasterchainInfo {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub last: BlockIdExt,
+pub struct BlocksMasterchainInfo {
+    pub last: TonBlockIdExt,
     pub state_root_hash: String,
-    pub init: BlockIdExt,
+    pub init: TonBlockIdExt,
     #[serde(rename = "@extra")]
     pub extra: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BlockIdExt {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub workchain: i32,
-    pub shard: String,
-    pub seqno: u32,
-    pub root_hash: String,
-    pub file_hash: String,
-    #[serde(rename = "@extra")]
-    pub extra: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct MasterchainBlockSignatures {
     #[serde(rename = "@type")]
     pub type_field: String,
-    pub id: BlockIdExt,
-    pub signatures: Vec<BlockSignature>,
+    pub id: TonBlockIdExt,
+    pub signatures: Vec<BlocksSignature>,
     #[serde(rename = "@extra")]
     pub extra: String,
 }
 
+/// Represents `@type: blocks.signature`.
 #[derive(Debug, Deserialize)]
-pub struct BlockSignature {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct BlocksSignature {
     pub node_id_short: String,
     pub signature: String,
 }
 
+/// Represents `@type: blocks.shardBlockProof`.
 #[derive(Debug, Deserialize)]
-pub struct ShardBlockProof {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub from: BlockIdExt,
-    pub mc_id: BlockIdExt,
-    pub links: Vec<ShardBlockLink>,
-    pub mc_proof: Vec<ShardBlockProofEntry>,
+pub struct BlocksShardBlockProof {
+    pub from: TonBlockIdExt,
+    pub mc_id: TonBlockIdExt,
+    pub links: Vec<BlocksShardBlockLink>,
+    pub mc_proof: Vec<BlocksBlockLinkBack>,
     #[serde(rename = "@extra")]
     pub extra: String,
 }
 
+/// Represents `@type: blocks.shardBlockLink`.
 #[derive(Debug, Deserialize)]
-pub struct ShardBlockLink {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub to_key_block: bool,
-    pub from: BlockIdExt,
-    pub to: BlockIdExt,
-    pub dest_proof: String,
+pub struct BlocksShardBlockLink {
+    pub id: TonBlockIdExt,
     pub proof: String,
-    pub state_proof: String,
 }
 
+/// Represents `@type: blocks.blockLinkBack`.
 #[derive(Debug, Deserialize)]
-pub struct ShardBlockProofEntry {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct BlocksBlockLinkBack {
     pub to_key_block: bool,
-    pub from: BlockIdExt,
-    pub to: BlockIdExt,
+    pub from: TonBlockIdExt,
+    pub to: TonBlockIdExt,
     pub dest_proof: String,
     pub proof: String,
     pub state_proof: String,
@@ -251,42 +223,38 @@ pub struct ConsensusBlock {
     pub timestamp: f64,
 }
 
+/// Represents `@type: blocks.shards`.
 #[derive(Debug, Deserialize)]
-pub struct ShardsResult {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub shards: Vec<BlockIdExt>,
+pub struct BlocksShards {
+    pub shards: Vec<TonBlockIdExt>,
     #[serde(rename = "@extra")]
     pub extra: Option<String>,
 }
 
+/// Represents `@type: blocks.transactions`.
 #[derive(Debug, Deserialize)]
-pub struct ShortTxId {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct BlocksTransactions {
+    pub id: TonBlockIdExt,
+    pub req_count: u32,
+    pub incomplete: bool,
+    pub transactions: Vec<BlocksShortTxId>,
+    #[serde(rename = "@extra")]
+    pub extra: Option<String>,
+}
+
+/// Represents `@type: blocks.shortTxId`.
+#[derive(Debug, Deserialize)]
+pub struct BlocksShortTxId {
     pub mode: i32,
     pub account: String,
     pub lt: String,
     pub hash: String,
 }
 
+/// Represents `@type: blocks.header`.
 #[derive(Debug, Deserialize)]
-pub struct BlockTransactions {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub id: BlockIdExt,
-    pub req_count: u32,
-    pub incomplete: bool,
-    pub transactions: Vec<ShortTxId>,
-    #[serde(rename = "@extra")]
-    pub extra: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BlockHeader {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub id: BlockIdExt,
+pub struct BlocksHeader {
+    pub id: TonBlockIdExt,
     pub global_id: i32,
     pub version: u32,
     pub flags: u32,
@@ -303,46 +271,28 @@ pub struct BlockHeader {
     pub start_lt: String,
     pub end_lt: String,
     pub gen_utime: u64,
-    pub prev_blocks: Vec<BlockIdExt>,
+    pub prev_blocks: Vec<TonBlockIdExt>,
     #[serde(rename = "@extra")]
     pub extra: Option<String>,
 }
 
+/// Represents `@type: configInfo`.
 #[derive(Debug, Deserialize)]
-pub struct TryLocateTxResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    pub address: AccountAddress,
-    pub utime: u64,
-    pub data: String,
-    pub transaction_id: TransactionId,
-    pub fee: String,
-    pub storage_fee: String,
-    pub other_fee: String,
-    pub in_msg: Message,
-    pub out_msgs: Vec<Message>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ConfigParamResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct ConfigInfo {
     pub config: TvmCell,
     #[serde(rename = "@extra")]
     pub extra: Option<String>,
 }
 
+/// Represents `@type: tvm.cell`.
 #[derive(Debug, Deserialize)]
 pub struct TvmCell {
-    #[serde(rename = "@type")]
-    pub type_field: String,
     pub bytes: String,
 }
 
+/// Represents `@type: smc.runResult`.
 #[derive(Debug, Deserialize)]
-pub struct RunGetMethodResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct SmcRunResult {
     pub gas_used: u32,
     pub stack: Vec<(String, String)>,
     pub exit_code: i32,
@@ -350,45 +300,33 @@ pub struct RunGetMethodResponse {
     pub extra: Option<String>,
 }
 
+/// Represents `@type: ok`.
 #[derive(Debug, Deserialize)]
-pub struct SendBocResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct Success {
     #[serde(rename = "@extra")]
     pub extra: String,
 }
 
+/// Represents `@type: raw.extMessageInfo`.
 #[derive(Debug, Deserialize)]
-pub struct SendBocHashResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct RawExtMessageInfo {
     pub hash: String,
     #[serde(rename = "@extra")]
     pub extra: String,
 }
 
+/// Represents `@type: query.fees`.
 #[derive(Debug, Deserialize)]
-pub struct SendQueryResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
-    #[serde(rename = "@extra")]
-    pub extra: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct EstimateFeeResponse {
-    #[serde(rename = "@type")]
-    pub type_field: String,
+pub struct QueryFees {
     pub source_fees: Fees,
     pub destination_fees: Vec<Fees>,
     #[serde(rename = "@extra")]
     pub extra: String,
 }
 
+/// Represents `@type: fees`.
 #[derive(Debug, Deserialize)]
 pub struct Fees {
-    #[serde(rename = "@type")]
-    pub type_field: String,
     pub in_fwd_fee: u64,
     pub storage_fee: u64,
     pub gas_fee: u64,
