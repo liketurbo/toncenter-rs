@@ -2,6 +2,12 @@
 name = "toncenter"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "SDK for integrating Toncenter into Rust applications."
+repository = "https://github.com/liketurbo/toncenter-rs"
+readme = "README.md"
+categories = ["cryptography::cryptocurrencies", "web-programming::http-client"]
+keywords = ["blockchain", "ton", "toncenter"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

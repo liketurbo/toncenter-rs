@@ -1,5 +1,3 @@
-use serde_json::json;
-use tokio;
 use toncenter::client::{ApiClientV2, ApiKey, Network};
 
 #[tokio::main]
@@ -18,12 +16,12 @@ async fn main() {
         }
     }
 
-    let params = json!({
+    let params = serde_json::json!({
         "address": address,
     });
 
     match api_client
-        .json_rpc("getAddressInformation", params, json!(1))
+        .json_rpc("getAddressInformation", params, serde_json::json!(1))
         .await
     {
         Ok(response) => println!("Response: {:#?}", response),
