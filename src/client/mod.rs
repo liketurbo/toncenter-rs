@@ -1,4 +1,5 @@
 pub(crate) mod base;
+pub(crate) mod base_v3;
 pub(crate) mod v2;
 pub(crate) mod v3;
 
