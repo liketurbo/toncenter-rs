@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 use super::base::Network;
 use crate::client::base::{ApiKey, BaseApiClient};
 
