@@ -342,6 +342,7 @@ impl ApiClientV2 {
     /// * `after_lt` - Logical time of transaction after which to start (optional).
     /// * `after_hash` - Hash of transaction after which to start (optional).
     /// * `count` - Maximum number of transactions to return (optional, default is 40).
+    #[allow(clippy::too_many_arguments)]
     pub async fn get_block_transactions(
         &self,
         workchain: i32,
