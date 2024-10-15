@@ -8,8 +8,23 @@ async fn main() {
 
     let api_client = ApiClientV3::new(Network::Testnet, Some(ApiKey::Header(api_key)));
 
-    match api_client.get_address_information(address).await {
-        Ok(info) => println!("Address info: {:#?}", info),
+    // match api_client.get_address_information(address).await {
+    //     Ok(info) => println!("Address info: {:#?}", info),
+    //     Err(e) => {
+    //         eprintln!("{:?}", e);
+    //     }
+    // }
+
+    match api_client.run_get_method(address, "seqno", &[]).await {
+        Ok(info) => {
+            if info.exit_code == 0 {
+                let stack_type_value = info.stack.first().unwrap();
+                let seqno: u64 =
+                    u64::from_str_radix(stack_type_value.value.trim_start_matches("0x"), 16)
+                        .unwrap();
+                println!("{}", seqno);
+            }
+        }
         Err(e) => {
             eprintln!("{:?}", e);
         }

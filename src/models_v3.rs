@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
@@ -32,6 +32,22 @@ pub struct MessageSuccessResponse {
     pub message_hash: String,
 }
 
+/// Represents `smc.runResult`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SmcRunResult {
+    pub gas_used: u32,
+    pub stack: Vec<SmcRunResultStackTypeValue>,
+    pub exit_code: i32,
+    pub extra: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SmcRunResultStackTypeValue {
+    #[serde(rename = "type")]
+    pub the_type: String,
+    pub value: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -62,5 +78,33 @@ mod tests {
         let result: Result<ApiResponseResultV3<MessageSuccessResponse>, _> =
             serde_json::from_value(response);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rungetmethod_seqno_decode() {
+        /*
+        use super::SmcRunResult;
+        let smc = SmcRunResult {
+            gas_used: 769,
+            stack: vec![SmcRunResultStackTypeValue {
+                the_type: "num".to_string(),
+                value: "0x14".to_string(),
+            }],
+            exit_code: 0,
+            extra: None,
+        };
+        let smc_json = serde_json::to_string(&smc).unwrap();
+         */
+
+        let response = json!({
+            "gas_used":769,
+            "exit_code":0,
+            "stack":[{"type":"num","value":"0x14"}]
+        });
+
+        let result: Result<ApiResponseResultV3<SmcRunResult>, _> = serde_json::from_value(response);
+        assert!(result.is_ok());
+        let smc = result.unwrap();
+        matches!(smc, ApiResponseResultV3::Success(SmcRunResult { .. }));
     }
 }

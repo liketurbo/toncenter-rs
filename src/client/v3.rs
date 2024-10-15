@@ -3,7 +3,7 @@
 use crate::client::base::{ApiKey, Network};
 use crate::client::base_v3::BaseApiClientV3;
 use crate::error::ToncenterError;
-use crate::models_v3::{MessageSuccessResponse, RawFullAccountStateV3};
+use crate::models_v3::{MessageSuccessResponse, RawFullAccountStateV3, SmcRunResult};
 
 pub struct ApiClientV3 {
     base_client: BaseApiClientV3,
@@ -51,6 +51,30 @@ impl ApiClientV3 {
         });
         self.base_client
             .post_api(&self.base_url, "message", &body)
+            .await
+    }
+
+    /// Run get method on smart contract.
+    ///
+    /// # Parameters
+    ///
+    /// * `address` - Address of the smart contract.
+    /// * `method` - Method name to run.
+    /// * `params` - Parameters for the method.
+    pub async fn run_get_method(
+        &self,
+        address: &str,
+        method: &str,
+        stack: &[&str],
+    ) -> Result<SmcRunResult, ToncenterError> {
+        let request_body = serde_json::json!({
+            "address": address,
+            "method": method,
+            "stack": stack
+        });
+
+        self.base_client
+            .post_api(&self.base_url, "runGetMethod", &request_body)
             .await
     }
 }

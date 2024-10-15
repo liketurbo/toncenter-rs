@@ -29,4 +29,18 @@ async fn main() {
             eprintln!("{:?}", e);
         }
     };
+
+    match api_client.run_get_method(address, "seqno", &[]).await {
+        Ok(info) => {
+            if info.exit_code == 0 {
+                let (_type, hex_value) = info.stack.first().unwrap();
+                let seqno: u64 =
+                    u64::from_str_radix(hex_value.trim_start_matches("0x"), 16).unwrap();
+                println!("{}", seqno);
+            }
+        }
+        Err(e) => {
+            eprintln!("{:?}", e);
+        }
+    }
 }
