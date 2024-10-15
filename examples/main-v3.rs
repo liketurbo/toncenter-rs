@@ -14,4 +14,14 @@ async fn main() {
             eprintln!("{:?}", e);
         }
     }
+
+    /*
+    let boc = "";
+    match api_client.send_message(boc).await {
+        Ok(info) => println!("message hash: {:#?}", info.message_hash),
+        Err(e) => {
+            eprintln!("{:?}", e);
+        }
+    }
+     */
 }

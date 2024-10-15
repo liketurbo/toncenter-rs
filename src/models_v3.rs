@@ -26,10 +26,15 @@ pub struct InternalTransactionIdV3 {
     pub last_transaction_lt: String,
 }
 
+/// Represents `Send an external message to the TON network successful response`.
+#[derive(Debug, Deserialize)]
+pub struct MessageSuccessResponse {
+    pub message_hash: String,
+}
+
 #[cfg(test)]
 mod tests {
-    use super::ApiResponseResultV3;
-    use crate::models_v3::RawFullAccountStateV3;
+    use super::*;
     use serde_json::json;
     #[test]
     fn test_address_information_decode() {
@@ -44,6 +49,17 @@ mod tests {
         });
 
         let result: Result<ApiResponseResultV3<RawFullAccountStateV3>, _> =
+            serde_json::from_value(response);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_send_message_decode() {
+        let response = json!({
+          "message_hash": "2LhE9RZPDXFdjRYAHyN5BBalWXMOuyqgMVwr0V/+0GA=",
+        });
+
+        let result: Result<ApiResponseResultV3<MessageSuccessResponse>, _> =
             serde_json::from_value(response);
         assert!(result.is_ok());
     }

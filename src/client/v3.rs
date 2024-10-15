@@ -3,7 +3,7 @@
 use crate::client::base::{ApiKey, Network};
 use crate::client::base_v3::BaseApiClientV3;
 use crate::error::ToncenterError;
-use crate::models_v3::RawFullAccountStateV3;
+use crate::models_v3::{MessageSuccessResponse, RawFullAccountStateV3};
 
 pub struct ApiClientV3 {
     base_client: BaseApiClientV3,
@@ -37,6 +37,20 @@ impl ApiClientV3 {
 
         self.base_client
             .get(&self.base_url, "addressInformation", &params)
+            .await
+    }
+
+    /// Send an external message to the TON network
+    ///
+    /// # Parameters
+    ///
+    /// * `boc` - Message in boc base64 format
+    pub async fn send_message(&self, boc: &str) -> Result<MessageSuccessResponse, ToncenterError> {
+        let body = serde_json::json!({
+            "boc": boc,
+        });
+        self.base_client
+            .post_api(&self.base_url, "message", &body)
             .await
     }
 }
