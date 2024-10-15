@@ -3,7 +3,9 @@
 use crate::client::base::{ApiKey, Network};
 use crate::client::base_v3::BaseApiClientV3;
 use crate::error::ToncenterError;
-use crate::models_v3::{MessageSuccessResponse, RawFullAccountStateV3, SmcRunResult};
+use crate::models_v3::{
+    JettonWalletsResponse, MessageSuccessResponse, RawFullAccountStateV3, SmcRunResult,
+};
 
 pub struct ApiClientV3 {
     base_client: BaseApiClientV3,
@@ -75,6 +77,27 @@ impl ApiClientV3 {
 
         self.base_client
             .post_api(&self.base_url, "runGetMethod", &request_body)
+            .await
+    }
+
+    /// Get Jetton wallets by specified filters
+    ///
+    /// # Parameters
+    ///
+    /// * `owner_address` - Address of Jetton wallet's owner
+    /// * `jetton_address` - Jetton Master in any form
+    pub async fn get_jetton_wallets(
+        &self,
+        owner_address: &str,
+        jetton_address: &str,
+    ) -> Result<JettonWalletsResponse, ToncenterError> {
+        let params = [
+            ("owner_address", owner_address),
+            ("jetton_address", jetton_address),
+        ];
+
+        self.base_client
+            .get(&self.base_url, "jetton/wallets", &params)
             .await
     }
 }

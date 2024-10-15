@@ -8,13 +8,16 @@ async fn main() {
 
     let api_client = ApiClientV3::new(Network::Testnet, Some(ApiKey::Header(api_key)));
 
-    // match api_client.get_address_information(address).await {
-    //     Ok(info) => println!("Address info: {:#?}", info),
-    //     Err(e) => {
-    //         eprintln!("{:?}", e);
-    //     }
-    // }
+    /*
+    match api_client.get_address_information(address).await {
+        Ok(info) => println!("Address info: {:#?}", info),
+        Err(e) => {
+            eprintln!("{:?}", e);
+        }
+    }
+     */
 
+    /*
     match api_client.run_get_method(address, "seqno", &[]).await {
         Ok(info) => {
             if info.exit_code == 0 {
@@ -29,6 +32,7 @@ async fn main() {
             eprintln!("{:?}", e);
         }
     }
+     */
 
     /*
     let boc = "";
@@ -39,4 +43,21 @@ async fn main() {
         }
     }
      */
+
+    let owner_address = address;
+    let jetton_address = "kQC6P2OM8eudgyuPN6LHmAzL5B8s3-xtybV-FHlEx4_yhKBN"; // jetton master
+    match api_client
+        .get_jetton_wallets(owner_address, jetton_address)
+        .await
+    {
+        Ok(info) => {
+            let wallet = info.jetton_wallets.first().unwrap();
+            // todo: show balance with jetton contract precision
+            println!("wallet balance: {:#?}", wallet.balance);
+        }
+
+        Err(e) => {
+            eprintln!("{:?}", e);
+        }
+    }
 }

@@ -48,6 +48,30 @@ pub struct SmcRunResultStackTypeValue {
     pub value: String,
 }
 
+use std::collections::HashMap;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JettonWallet {
+    pub address: String,
+    pub balance: String,
+    pub owner: String,
+    pub jetton: String,
+    pub last_transaction_lt: String,
+    pub code_hash: String,
+    pub data_hash: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AddressBookEntry {
+    pub user_friendly: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JettonWalletsResponse {
+    pub jetton_wallets: Vec<JettonWallet>,
+    pub address_book: HashMap<String, AddressBookEntry>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,5 +130,39 @@ mod tests {
         assert!(result.is_ok());
         let smc = result.unwrap();
         matches!(smc, ApiResponseResultV3::Success(SmcRunResult { .. }));
+    }
+
+    #[test]
+    fn test_get_jetton_wallets() {
+        let response = json!({
+            "jetton_wallets":[{
+                "address":"0:48FA147B278E22D7FE26C9C7D449999AC929CB818B3BC7A032E5988E73576EB6",
+                "balance":"20000030000000000",
+                "owner":"0:3A5B6B29449E83F8051FE8F1D37CA24289BEB764953A7CAF01C47569DF6D9495",
+                "jetton":"0:BA3F638CF1EB9D832B8F37A2C7980CCBE41F2CDFEC6DC9B57E147944C78FF284",
+                "last_transaction_lt":"26848793000003",
+                "code_hash":"vrBoPr64kn/p/I7AoYvH3ReJlomCWhIeq0bFo6hg0M4=",
+                "data_hash":"4YqZpb2TbYp4pVDInH/2aqQRtRbos1YkxbE5SQyhh00="
+              }],
+           "address_book":{
+                "0:3A5B6B29449E83F8051FE8F1D37CA24289BEB764953A7CAF01C47569DF6D9495":{
+                "user_friendly":"0QA6W2spRJ6D-AUf6PHTfKJCib63ZJU6fK8BxHVp322UlXe4"
+              },
+              "0:48FA147B278E22D7FE26C9C7D449999AC929CB818B3BC7A032E5988E73576EB6":{
+                 "user_friendly":"kQBI-hR7J44i1_4mycfUSZmaySnLgYs7x6Ay5ZiOc1dutqkJ"
+              },
+              "0:BA3F638CF1EB9D832B8F37A2C7980CCBE41F2CDFEC6DC9B57E147944C78FF284":{
+                 "user_friendly":"kQC6P2OM8eudgyuPN6LHmAzL5B8s3-xtybV-FHlEx4_yhKBN"
+              }
+           }
+        });
+
+        let result: Result<ApiResponseResultV3<JettonWalletsResponse>, _> =
+            serde_json::from_value(response);
+        assert!(result.is_ok());
+        matches!(
+            result.unwrap(),
+            ApiResponseResultV3::Success(JettonWalletsResponse { .. })
+        );
     }
 }
