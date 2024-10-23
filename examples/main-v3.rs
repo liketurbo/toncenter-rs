@@ -1,4 +1,4 @@
-use toncenter::client::{ApiClientV3, ApiKey, Network};
+use toncenter_anychain::client::{ApiClientV3, ApiKey, Network};
 #[tokio::main]
 async fn main() {
     env_logger::init();

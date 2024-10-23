@@ -1061,7 +1061,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "toncenter"
+name = "toncenter-anychain"
 version = "0.1.0"
 dependencies = [
  "env_logger",

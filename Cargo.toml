@@ -1,10 +1,10 @@
 [package]
-name = "toncenter"
+name = "toncenter-anychain"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "SDK for integrating Toncenter into Rust applications."
-repository = "https://github.com/liketurbo/toncenter-rs"
+repository = "https://github.com/loki-cmu/toncenter-rs"
 readme = "README.md"
 categories = ["cryptography::cryptocurrencies", "web-programming::http-client"]
 keywords = ["blockchain", "ton", "toncenter"]
