@@ -10,6 +10,7 @@ use serde::{de::DeserializeOwned, Serialize};
 pub enum Network {
     Mainnet,
     Testnet,
+    Custom(String),
 }
 
 #[derive(Debug)]

@@ -16,10 +16,10 @@ pub struct ApiClientV2 {
 impl ApiClientV2 {
     pub fn new(network: Network, api_key: Option<ApiKey>) -> Self {
         let base_url = match network {
-            Network::Mainnet => "https://toncenter.com/api/v2/",
-            Network::Testnet => "https://testnet.toncenter.com/api/v2/",
-        }
-        .to_string();
+            Network::Mainnet => "https://toncenter.com/api/v2/".to_string(),
+            Network::Testnet => "https://testnet.toncenter.com/api/v2/".to_string(),
+            Network::Custom(url) => url,
+        };
         Self {
             base_client: BaseApiClient::new(api_key),
             base_url,
